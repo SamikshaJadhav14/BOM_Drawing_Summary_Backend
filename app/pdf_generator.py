@@ -70,8 +70,11 @@ def generate_summary_pdf(summary, output_path):
     drawing_data = [
         ["Field", "Value"],
         ["Title", drawing.get("title", "")],
+        ["Drawing", drawing.get("drawing", "")],
+        ["Service", drawing.get("service", "")],
         ["Document ID", drawing.get("document_id", "")],
         ["Project ID", drawing.get("project_id", "")],
+        ["Element ID", drawing.get("element_id", "")],
         ["Year", drawing.get("year", "")],
         ["Scale", drawing.get("scale", "")],
         ["Sheet Size", drawing.get("sheet_size", "")],
@@ -232,22 +235,29 @@ def generate_summary_pdf(summary, output_path):
 
     hardware = summary.get("hardware", [])
 
+    # NOTE: the original template's hardware table read a "material"
+    # key that is never present in the extracted data (neither in
+    # the old hardcoded summary.py nor in the real parsed output),
+    # so that column always rendered blank. Swapped it for the two
+    # fields that actually exist: Purchase Item Code and UOM.
     hardware_data = [
-        ["Description", "Material", "Quantity"]
+        ["Description", "Purchase Item Code", "Qty", "Weight (kg)", "UOM"]
     ]
 
     for item in hardware:
         hardware_data.append(
             [
                 str(item.get("description", "")),
-                str(item.get("material", "")),
+                str(item.get("purchase_item_code", "")),
                 str(item.get("quantity", "")),
+                str(item.get("weight_kg", "")),
+                str(item.get("uom", "")),
             ]
         )
 
     hardware_table = Table(
         hardware_data,
-        colWidths=[95 * mm, 45 * mm, 25 * mm],
+        colWidths=[70 * mm, 45 * mm, 15 * mm, 25 * mm, 15 * mm],
         repeatRows=1,
     )
 
@@ -267,6 +277,55 @@ def generate_summary_pdf(summary, output_path):
     )
 
     elements.append(hardware_table)
+    elements.append(Spacer(1, 10))
+
+    # -----------------------------
+    # COMMON DIMENSION SUMMARY
+    # -----------------------------
+
+    dimension_summary = summary.get("dimension_summary", [])
+
+    if dimension_summary:
+        elements.append(
+            Paragraph("Common Dimension Summary", heading_style)
+        )
+
+        dim_data = [
+            ["Combined Size (LxWxT)", "Specification", "Part Count", "Part Nos."]
+        ]
+
+        for row in dimension_summary:
+            dim_data.append(
+                [
+                    str(row.get("combined_size", "")),
+                    str(row.get("specification", "")),
+                    str(row.get("part_count", "")),
+                    str(row.get("part_nos", "")),
+                ]
+            )
+
+        dim_table = Table(
+            dim_data,
+            colWidths=[35 * mm, 30 * mm, 20 * mm, 70 * mm],
+            repeatRows=1,
+        )
+
+        dim_table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#264478")),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                    ("FONTSIZE", (0, 0), (-1, -1), 7),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("ROWBACKGROUNDS", (0, 1), (-1, -1),
+                     [colors.white, colors.HexColor("#F2F2F2")]),
+                ]
+            )
+        )
+
+        elements.append(dim_table)
 
     # -----------------------------
     # BUILD PDF
