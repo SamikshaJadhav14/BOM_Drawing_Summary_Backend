@@ -1,14 +1,20 @@
-from fastapi import FastAPI, UploadFile, File
-from fastapi.responses import FileResponse
+import os
+import re
 
+from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi.responses import FileResponse
+from pydantic import BaseModel
+
+from app.email_service import send_pdf_email
 from app.pdf_processor import extract_text
 from app.summary import generate_summary
 from app.pdf_generator import generate_summary_pdf
 
-import os
-
-
 app = FastAPI(title="BOM Drawing Summary Generator")
+
+
+class EmailRequest(BaseModel):
+    email: str
 
 
 @app.get("/")
@@ -59,3 +65,22 @@ async def upload_pdf(file: UploadFile = File(...)):
         media_type="application/pdf",
         filename="drawing_summary.pdf"
     )
+
+
+@app.post("/send-pdf/{job_id}")
+async def send_generated_pdf(job_id: str, payload: EmailRequest):
+    email = payload.email.strip()
+    if not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", email):
+        return {"success": False, "error": "Please enter a valid email address."}
+
+    output_pdf = os.path.join("output", "drawing_summary.pdf")
+    try:
+        send_pdf_email(email, output_pdf, job_id)
+    except ValueError as error:
+        return {"success": False, "error": str(error)}
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Generated PDF not found")
+    except Exception as error:
+        return {"success": False, "error": f"Could not send email: {error}"}
+
+    return {"success": True, "message": "PDF sent successfully to your email."}
