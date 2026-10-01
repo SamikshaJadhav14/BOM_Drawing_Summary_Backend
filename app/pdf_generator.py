@@ -41,25 +41,19 @@ def generate_summary_pdf(summary, output_path):
         spaceAfter=6,
     )
 
-    normal_style = ParagraphStyle(
-        "NormalStyle",
-        parent=styles["Normal"],
-        fontSize=8,
-    )
-
     elements = []
 
-    # -----------------------------
+    # =========================================================
     # TITLE
-    # -----------------------------
+    # =========================================================
 
     elements.append(
         Paragraph("BOM DRAWING SUMMARY", title_style)
     )
 
-    # -----------------------------
+    # =========================================================
     # DRAWING DETAILS
-    # -----------------------------
+    # =========================================================
 
     drawing = summary.get("drawing_details", {})
 
@@ -78,14 +72,8 @@ def generate_summary_pdf(summary, output_path):
         ["Year", drawing.get("year", "")],
         ["Scale", drawing.get("scale", "")],
         ["Sheet Size", drawing.get("sheet_size", "")],
-        [
-            "Responsible Department",
-            drawing.get("responsible_department", ""),
-        ],
-        [
-            "Total Weight (kg)",
-            drawing.get("total_weight_kg", ""),
-        ],
+        ["Responsible Department", drawing.get("responsible_department", "")],
+        ["Total Weight (kg)", drawing.get("total_weight_kg", "")],
     ]
 
     drawing_table = Table(
@@ -95,31 +83,29 @@ def generate_summary_pdf(summary, output_path):
     )
 
     drawing_table.setStyle(
-        TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1F4E78")),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                ("FONTNAME", (0, 1), (0, -1), "Helvetica-Bold"),
-                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-                ("FONTSIZE", (0, 0), (-1, -1), 8),
-                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("ROWBACKGROUNDS", (0, 1), (-1, -1),
-                 [colors.white, colors.HexColor("#F2F2F2")]),
-                ("LEFTPADDING", (0, 0), (-1, -1), 5),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 5),
-                ("TOPPADDING", (0, 0), (-1, -1), 5),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-            ]
-        )
+        TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1F4E78")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTNAME", (0, 1), (0, -1), "Helvetica-Bold"),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+            ("FONTSIZE", (0, 0), (-1, -1), 8),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1),
+             [colors.white, colors.HexColor("#F2F2F2")]),
+            ("LEFTPADDING", (0, 0), (-1, -1), 5),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+            ("TOPPADDING", (0, 0), (-1, -1), 5),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ])
     )
 
     elements.append(drawing_table)
     elements.append(Spacer(1, 10))
 
-    # -----------------------------
+    # =========================================================
     # DISPATCHABLE UNIT
-    # -----------------------------
+    # =========================================================
 
     dispatch = summary.get("dispatchable_unit", {})
 
@@ -144,26 +130,96 @@ def generate_summary_pdf(summary, output_path):
     )
 
     dispatch_table.setStyle(
-        TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#548235")),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                ("FONTNAME", (0, 1), (0, -1), "Helvetica-Bold"),
-                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-                ("FONTSIZE", (0, 0), (-1, -1), 8),
-                ("ROWBACKGROUNDS", (0, 1), (-1, -1),
-                 [colors.white, colors.HexColor("#F2F2F2")]),
-            ]
-        )
+        TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#548235")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTNAME", (0, 1), (0, -1), "Helvetica-Bold"),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+            ("FONTSIZE", (0, 0), (-1, -1), 8),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1),
+             [colors.white, colors.HexColor("#F2F2F2")]),
+        ])
     )
 
     elements.append(dispatch_table)
     elements.append(Spacer(1, 10))
 
-    # -----------------------------
+    # =========================================================
+    # ABSTRACT
+    # =========================================================
+
+    abstract = summary.get("abstract", [])
+
+    if abstract:
+
+        elements.append(
+            Paragraph("ABSTRACT", heading_style)
+        )
+
+        abstract_data = [
+            ["SR. NO.", "SECTION", "TOTAL"]
+        ]
+
+        for row in abstract:
+            abstract_data.append([
+                str(row.get("sr_no", "")),
+                str(row.get("section", "")),
+                f"{float(row.get('total', 0)):.2f}",
+            ])
+
+        abstract_table = Table(
+            abstract_data,
+            colWidths=[
+                25 * mm,
+                105 * mm,
+                40 * mm,
+            ],
+            repeatRows=1,
+        )
+
+        abstract_table.setStyle(
+            TableStyle([
+                # Header
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1F4E78")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+
+                # Grid
+                ("GRID", (0, 0), (-1, -1), 0.6, colors.grey),
+
+                # Alignment
+                ("ALIGN", (0, 0), (0, -1), "CENTER"),
+                ("ALIGN", (2, 0), (2, -1), "RIGHT"),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+
+                # Font
+                ("FONTSIZE", (0, 0), (-1, -1), 9),
+
+                # Padding
+                ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+
+                # Alternating rows
+                ("ROWBACKGROUNDS", (0, 1), (-1, -2),
+                 [colors.white, colors.HexColor("#F2F2F2")]),
+
+                # Grand Total row
+                ("BACKGROUND", (0, -1), (-1, -1),
+                 colors.HexColor("#D9EAF7")),
+                ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
+                ("LINEABOVE", (0, -1), (-1, -1), 1.2, colors.HexColor("#1F4E78")),
+            ])
+        )
+
+        elements.append(abstract_table)
+        elements.append(Spacer(1, 10))
+
+    # =========================================================
     # PARTS
-    # -----------------------------
+    # =========================================================
 
     elements.append(
         Paragraph("Parts Summary", heading_style)
@@ -183,16 +239,14 @@ def generate_summary_pdf(summary, output_path):
     ]
 
     for part in parts:
-        parts_data.append(
-            [
-                str(part.get("part_no", "")),
-                str(part.get("description", "")),
-                str(part.get("specification", "")),
-                str(part.get("size", "")),
-                str(part.get("quantity", "")),
-                str(part.get("weight_kg", "")),
-            ]
-        )
+        parts_data.append([
+            str(part.get("part_no", "")),
+            str(part.get("description", "")),
+            str(part.get("specification", "")),
+            str(part.get("size", "")),
+            str(part.get("quantity", "")),
+            str(part.get("weight_kg", "")),
+        ])
 
     parts_table = Table(
         parts_data,
@@ -208,26 +262,24 @@ def generate_summary_pdf(summary, output_path):
     )
 
     parts_table.setStyle(
-        TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#7030A0")),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-                ("FONTSIZE", (0, 0), (-1, -1), 7),
-                ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                ("ROWBACKGROUNDS", (0, 1), (-1, -1),
-                 [colors.white, colors.HexColor("#F2F2F2")]),
-            ]
-        )
+        TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#7030A0")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+            ("FONTSIZE", (0, 0), (-1, -1), 7),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1),
+             [colors.white, colors.HexColor("#F2F2F2")]),
+        ])
     )
 
     elements.append(parts_table)
     elements.append(Spacer(1, 10))
 
-    # -----------------------------
+    # =========================================================
     # HARDWARE
-    # -----------------------------
+    # =========================================================
 
     elements.append(
         Paragraph("Hardware Summary", heading_style)
@@ -235,25 +287,18 @@ def generate_summary_pdf(summary, output_path):
 
     hardware = summary.get("hardware", [])
 
-    # NOTE: the original template's hardware table read a "material"
-    # key that is never present in the extracted data (neither in
-    # the old hardcoded summary.py nor in the real parsed output),
-    # so that column always rendered blank. Swapped it for the two
-    # fields that actually exist: Purchase Item Code and UOM.
     hardware_data = [
         ["Description", "Purchase Item Code", "Qty", "Weight (kg)", "UOM"]
     ]
 
     for item in hardware:
-        hardware_data.append(
-            [
-                str(item.get("description", "")),
-                str(item.get("purchase_item_code", "")),
-                str(item.get("quantity", "")),
-                str(item.get("weight_kg", "")),
-                str(item.get("uom", "")),
-            ]
-        )
+        hardware_data.append([
+            str(item.get("description", "")),
+            str(item.get("purchase_item_code", "")),
+            str(item.get("quantity", "")),
+            str(item.get("weight_kg", "")),
+            str(item.get("uom", "")),
+        ])
 
     hardware_table = Table(
         hardware_data,
@@ -262,30 +307,29 @@ def generate_summary_pdf(summary, output_path):
     )
 
     hardware_table.setStyle(
-        TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#C65911")),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-                ("FONTSIZE", (0, 0), (-1, -1), 7),
-                ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                ("ROWBACKGROUNDS", (0, 1), (-1, -1),
-                 [colors.white, colors.HexColor("#F2F2F2")]),
-            ]
-        )
+        TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#C65911")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+            ("FONTSIZE", (0, 0), (-1, -1), 7),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1),
+             [colors.white, colors.HexColor("#F2F2F2")]),
+        ])
     )
 
     elements.append(hardware_table)
     elements.append(Spacer(1, 10))
 
-    # -----------------------------
+    # =========================================================
     # COMMON DIMENSION SUMMARY
-    # -----------------------------
+    # =========================================================
 
     dimension_summary = summary.get("dimension_summary", [])
 
     if dimension_summary:
+
         elements.append(
             Paragraph("Common Dimension Summary", heading_style)
         )
@@ -295,14 +339,12 @@ def generate_summary_pdf(summary, output_path):
         ]
 
         for row in dimension_summary:
-            dim_data.append(
-                [
-                    str(row.get("combined_size", "")),
-                    str(row.get("specification", "")),
-                    str(row.get("part_count", "")),
-                    str(row.get("part_nos", "")),
-                ]
-            )
+            dim_data.append([
+                str(row.get("combined_size", "")),
+                str(row.get("specification", "")),
+                str(row.get("part_count", "")),
+                str(row.get("part_nos", "")),
+            ])
 
         dim_table = Table(
             dim_data,
@@ -311,25 +353,22 @@ def generate_summary_pdf(summary, output_path):
         )
 
         dim_table.setStyle(
-            TableStyle(
-                [
-                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#264478")),
-                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                    ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-                    ("FONTSIZE", (0, 0), (-1, -1), 7),
-                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                    ("ROWBACKGROUNDS", (0, 1), (-1, -1),
-                     [colors.white, colors.HexColor("#F2F2F2")]),
-                ]
-            )
+            TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#264478")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                ("FONTSIZE", (0, 0), (-1, -1), 7),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1),
+                 [colors.white, colors.HexColor("#F2F2F2")]),
+            ])
         )
 
         elements.append(dim_table)
 
-    # -----------------------------
+    # =========================================================
     # BUILD PDF
-    # -----------------------------
+    # =========================================================
 
     doc.build(elements)
-    

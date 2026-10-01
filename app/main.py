@@ -11,6 +11,7 @@ from app.email_service import send_pdf_email
 from app.pdf_processor import extract_text
 from app.summary import generate_summary
 from app.pdf_generator import generate_summary_pdf
+from app.excel_generator import generate_abstract_excel
 
 
 app = FastAPI(title="BOM Drawing Summary Generator")
@@ -20,7 +21,7 @@ class EmailRequest(BaseModel):
     email: str
 
 
-# Stores temporary generated PDF paths for active jobs
+# Stores temporary generated PDF and Excel paths for active jobs
 jobs = {}
 
 
@@ -60,14 +61,16 @@ async def upload_pdf(file: UploadFile = File(...)):
         # Create unique job ID
         job_id = str(uuid.uuid4())
 
+        # -------------------------------------------------
         # Create temporary output PDF
-        output_file = tempfile.NamedTemporaryFile(
+        # -------------------------------------------------
+        output_pdf_file = tempfile.NamedTemporaryFile(
             suffix=".pdf",
             delete=False
         )
 
-        output_pdf = output_file.name
-        output_file.close()
+        output_pdf = output_pdf_file.name
+        output_pdf_file.close()
 
         # Generate summary PDF
         generate_summary_pdf(
@@ -75,10 +78,34 @@ async def upload_pdf(file: UploadFile = File(...)):
             output_pdf
         )
 
-        # Store temporary PDF path for email
-        jobs[job_id] = output_pdf
+        # -------------------------------------------------
+        # Create temporary output Excel
+        # -------------------------------------------------
+        output_excel_file = tempfile.NamedTemporaryFile(
+            suffix=".xlsx",
+            delete=False
+        )
 
+        output_excel = output_excel_file.name
+        output_excel_file.close()
+
+        # Generate ABSTRACT Excel
+        generate_abstract_excel(
+            summary,
+            output_excel
+        )
+
+        # -------------------------------------------------
+        # Store both generated files for this job
+        # -------------------------------------------------
+        jobs[job_id] = {
+            "pdf": output_pdf,
+            "excel": output_excel
+        }
+
+        # -------------------------------------------------
         # Return generated PDF
+        # -------------------------------------------------
         response = FileResponse(
             output_pdf,
             media_type="application/pdf",
@@ -88,12 +115,56 @@ async def upload_pdf(file: UploadFile = File(...)):
         # Send job ID to frontend through response header
         response.headers["X-Job-ID"] = job_id
 
+        # Send Excel download endpoint through response header
+        response.headers["X-Excel-Download"] = (
+            f"/download-excel/{job_id}"
+        )
+
         return response
 
     finally:
         # Delete uploaded confidential input PDF
         if os.path.exists(pdf_path):
             os.remove(pdf_path)
+
+
+@app.get("/download-excel/{job_id}")
+async def download_excel(job_id: str):
+
+    # Get job information
+    job = jobs.get(job_id)
+
+    if not job:
+        raise HTTPException(
+            status_code=404,
+            detail="Generated files not found or have expired."
+        )
+
+    # Get Excel path
+    output_excel = job.get("excel")
+
+    if not output_excel:
+        raise HTTPException(
+            status_code=404,
+            detail="Generated Excel file not found."
+        )
+
+    # Check whether Excel file still exists
+    if not os.path.exists(output_excel):
+        raise HTTPException(
+            status_code=404,
+            detail="Generated Excel file no longer exists."
+        )
+
+    # Return Excel file
+    return FileResponse(
+        output_excel,
+        media_type=(
+            "application/vnd.openxmlformats-officedocument."
+            "spreadsheetml.sheet"
+        ),
+        filename="drawing_abstract.xlsx"
+    )
 
 
 @app.post("/send-pdf/{job_id}")
@@ -114,15 +185,25 @@ async def send_generated_pdf(
             "error": "Please enter a valid email address."
         }
 
-    # Get temporary PDF path using job ID
-    output_pdf = jobs.get(job_id)
+    # Get job information
+    job = jobs.get(job_id)
+
+    if not job:
+        raise HTTPException(
+            status_code=404,
+            detail="Generated files not found or have expired."
+        )
+
+    # Get PDF path
+    output_pdf = job.get("pdf")
 
     if not output_pdf:
         raise HTTPException(
             status_code=404,
-            detail="Generated PDF not found or has expired."
+            detail="Generated PDF not found."
         )
 
+    # Check whether PDF still exists
     if not os.path.exists(output_pdf):
         jobs.pop(job_id, None)
 
@@ -142,6 +223,12 @@ async def send_generated_pdf(
         # Delete temporary PDF after successful email
         if os.path.exists(output_pdf):
             os.remove(output_pdf)
+
+        # Delete temporary Excel after successful email
+        output_excel = job.get("excel")
+
+        if output_excel and os.path.exists(output_excel):
+            os.remove(output_excel)
 
         # Remove job from memory
         jobs.pop(job_id, None)

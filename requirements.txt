@@ -9,3 +9,5 @@ pandas
 opencv-python
 pytesseract
 reportlab
+openpyxl
+python-dotenv
