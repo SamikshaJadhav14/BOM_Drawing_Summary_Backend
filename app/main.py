@@ -10,7 +10,9 @@ from pydantic import BaseModel
 from app.email_service import send_pdf_email
 from app.pdf_processor import extract_text
 from app.summary import generate_summary
-from app.pdf_generator import generate_summary_pdf
+from app.pdf_generator import generate_summary_pdf  # standalone summary PDF (no longer used by /upload)
+from app.bom_parser import extract_bom, build_abstract
+from app.abstract_stamper import stamp_abstract
 from app.excel_generator import generate_abstract_excel
 
 
@@ -58,6 +60,25 @@ async def upload_pdf(file: UploadFile = File(...)):
         # Generate structured summary
         summary = generate_summary(text)
 
+        # Read the BOM with positions (handles every dispatchable-unit block of
+        # the drawing). If it cannot be read that way, the text based summary
+        # above is used unchanged.
+        bom = extract_bom(pdf_path)
+        bom_page = 0
+
+        if bom:
+            summary["parts"] = bom["parts"]
+            summary["abstract"] = build_abstract(bom["parts"])
+            bom_page = bom["bom_page"]
+
+        # The last abstract row is always "Grand Total"; without any other row
+        # there is no BOM in this PDF.
+        if len(summary.get("abstract", [])) < 2:
+            raise HTTPException(
+                status_code=422,
+                detail="No BOM parts were found in this PDF."
+            )
+
         # Create unique job ID
         job_id = str(uuid.uuid4())
 
@@ -72,10 +93,13 @@ async def upload_pdf(file: UploadFile = File(...)):
         output_pdf = output_pdf_file.name
         output_pdf_file.close()
 
-        # Generate summary PDF
-        generate_summary_pdf(
-            summary,
-            output_pdf
+        # Place the ABSTRACT table in the empty space of the uploaded drawing
+        # (found automatically for every PDF) and save it as the output PDF
+        stamp_abstract(
+            pdf_path,
+            output_pdf,
+            summary["abstract"],
+            bom_page
         )
 
         # -------------------------------------------------
@@ -104,12 +128,15 @@ async def upload_pdf(file: UploadFile = File(...)):
         }
 
         # -------------------------------------------------
-        # Return generated PDF
+        # Return the drawing with the abstract table added
         # -------------------------------------------------
+        base_name = os.path.splitext(os.path.basename(file.filename))[0]
+        output_name = f"{base_name}_with_abstract.pdf"
+
         response = FileResponse(
             output_pdf,
             media_type="application/pdf",
-            filename="drawing_summary.pdf"
+            filename=output_name
         )
 
         # Send job ID to frontend through response header

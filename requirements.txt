@@ -11,3 +11,4 @@ pytesseract
 reportlab
 openpyxl
 python-dotenv
+numpy
